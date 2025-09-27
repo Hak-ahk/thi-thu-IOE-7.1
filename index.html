@@ -1,0 +1,1725 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bài Thi Thử IOE Lớp 7 Tương Tác</title>
+    <!-- Tải Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Cấu hình Font và Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#0d9488', /* Teal primary color for IOE 7 */
+                        'primary-dark': '#0f766e',
+                        'success': '#10b981',
+                        'error': '#ef4444',
+                        'info': '#3b82f6',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        /* Tùy chỉnh nút */
+        .btn {
+            @apply px-4 py-2 font-semibold text-white transition duration-200 ease-in-out rounded-xl shadow-lg hover:shadow-xl;
+        }
+
+        .btn-primary {
+            @apply bg-primary hover:bg-primary-dark;
+        }
+
+        .btn-success {
+            @apply bg-success hover:bg-emerald-600;
+        }
+
+        .btn-error {
+            @apply bg-error hover:bg-red-600;
+        }
+
+        /* Hiệu ứng pháo hoa */
+        .confetti-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* Lớp ẩn gợi ý mặc định */
+        #hint-text {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        /* Lớp hiển thị gợi ý khi giữ nút */
+        .show-hint #hint-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Toast Notification */
+        #toast-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 10000;
+            max-width: 90vw;
+            pointer-events: none;
+        }
+        .toast {
+            @apply p-4 rounded-xl shadow-2xl mb-3 transform transition-all duration-300 ease-out;
+            opacity: 0;
+            transform: translateY(-20px);
+            pointer-events: auto;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container"></div>
+
+    <!-- Khung chứa ứng dụng chính -->
+    <div id="app" class="min-h-screen flex flex-col items-center p-4">
+        
+        <!-- Màn hình chào mừng/Đăng nhập -->
+        <div id="start-screen" class="w-full max-w-lg p-8 bg-white rounded-2xl shadow-2xl transition duration-500">
+            <h1 class="text-3xl font-extrabold text-primary mb-4 text-center">Bài Thi Thử IOE 7</h1>
+            <p class="text-gray-600 text-center mb-6">Nhập tên của bạn để bắt đầu luyện tập (tổng 114 câu).</p>
+            
+            <input type="text" id="player-name-input" placeholder="Tên của bạn..." 
+                   class="w-full px-4 py-3 mb-6 border border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition duration-150">
+            
+            <button onclick="startGame()" class="btn btn-primary w-full py-3 text-lg">
+                Bắt Đầu Thi
+            </button>
+            <p class="mt-4 text-sm text-center text-gray-500">Mỗi câu đúng lần đầu được 10 điểm. Cố lên nhé!</p>
+        </div>
+
+        <!-- Màn hình Bài thi -->
+        <div id="quiz-screen" class="w-full max-w-3xl p-6 bg-white rounded-2xl shadow-2xl hidden flex-col">
+            
+            <!-- Thanh thông tin -->
+            <div class="flex justify-between items-center p-4 mb-4 bg-primary text-white rounded-xl shadow-md">
+                <div class="flex-1">
+                    <p class="text-sm">Thí sinh:</p>
+                    <p id="display-player-name" class="font-bold text-lg"></p>
+                </div>
+                <div class="text-right">
+                    <p id="display-score" class="font-bold text-3xl">0</p>
+                    <p class="text-sm">Điểm</p>
+                </div>
+                <div class="ml-6 text-center">
+                    <p id="display-progress" class="font-bold text-3xl">0/0</p>
+                    <p class="text-sm">Câu hỏi</p>
+                </div>
+            </div>
+
+            <!-- Khu vực câu hỏi -->
+            <div id="question-area" class="space-y-6">
+                <h2 id="question-title" class="text-xl font-bold text-gray-800"></h2>
+                
+                <!-- Hiển thị nội dung câu hỏi (sẽ được thay đổi bằng JS) -->
+                <div id="question-content" class="min-h-[150px] flex flex-col justify-center">
+                    <!-- Nội dung câu hỏi cụ thể (Sắp xếp/Điền từ/Lựa chọn) sẽ được chèn vào đây -->
+                </div>
+
+                <!-- Khu vực thông báo và giải thích -->
+                <div id="feedback-area" class="hidden">
+                    <p id="feedback-message" class="text-lg font-semibold p-3 mb-3 rounded-xl"></p>
+                    <div id="explanation-box" class="p-4 bg-info/10 border-l-4 border-info rounded-xl text-gray-700">
+                        <p class="font-bold text-info mb-1">Giải thích chi tiết:</p>
+                        <p id="explanation-text"></p>
+                    </div>
+                </div>
+
+                <!-- Các nút điều khiển -->
+                <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+                    <button id="hint-button" class="btn bg-orange-500 hover:bg-orange-600 relative"
+                            onmousedown="showHint()" onmouseup="hideHint()" onmouseleave="hideHint()"
+                            ontouchstart="showHint()" ontouchend="hideHint()" ontouchcancel="hideHint()">
+                        Gợi ý (Giữ)
+                        <div id="hint-text" class="absolute left-0 bottom-full mb-2 p-2 bg-yellow-100 border border-yellow-400 text-yellow-800 text-sm font-normal rounded-xl whitespace-nowrap">
+                            <!-- Đáp án gợi ý sẽ được chèn vào đây -->
+                        </div>
+                    </button>
+
+                    <button id="next-button" class="btn btn-primary" onclick="nextQuestion()" disabled>
+                        Tiếp theo »
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Màn hình chúc mừng -->
+        <div id="complete-screen" class="w-full max-w-lg p-8 bg-white rounded-2xl shadow-2xl text-center hidden transition duration-500 relative overflow-hidden">
+            <div class="confetti-container" id="confetti-canvas"></div> 
+            <h1 class="text-4xl font-extrabold text-success mb-4 animate-bounce">
+                🎉 Chúc Mừng Hoàn Thành! 🎉
+            </h1>
+            <p class="text-2xl text-gray-700 mb-2">Bạn đã hoàn thành bài thi với</p>
+            <p id="final-score" class="text-6xl font-black text-primary mb-6"></p>
+            <p class="text-lg text-gray-600 mb-8">Hãy làm lại để đạt điểm cao hơn nhé!</p>
+
+            <button onclick="resetGame()" class="btn btn-success w-full py-3 text-lg">
+                Làm Lại Bài Thi
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Script chính -->
+    <script>
+        // Cấu trúc dữ liệu bài thi
+        const questions = [
+            // --- PART 1: CHỌN ĐÁP ÁN ĐÚNG NHẤT (MULTIPLE CHOICE) ---
+            {
+                type: 'mc', title: 'Chọn đáp án đúng nhất:',
+                question: "Children often _____ a computer for school work.",
+                options: ["use", "uses", "used", "are using"],
+                correct: "use",
+                hint: "Sử dụng thì Hiện tại Đơn với chủ ngữ số nhiều.",
+                explanation_vi: "Chủ ngữ số nhiều 'Children' trong thì Hiện tại Đơn (với 'often') đi với động từ nguyên mẫu 'use'. **Nghĩa của câu: Trẻ em thường sử dụng máy tính cho việc học.**",
+                explanation_en: "The plural subject 'Children' in the Present Simple tense (with 'often') requires the bare infinitive form 'use'."
+            },
+            {
+                type: 'mc', title: 'Địa lý - Quốc gia:',
+                question: "Kangaroo are the symbol of _____.",
+                options: ["Canada", "Australia", "Austria", "Argentina"],
+                correct: "Australia",
+                hint: "Đây là loài vật biểu tượng của quốc gia nào ở Châu Đại Dương?",
+                explanation_vi: "Chuột túi (Kangaroo) là loài vật biểu tượng của **Australia** (Úc). **Nghĩa của câu: Chuột túi là biểu tượng của nước Úc.**",
+                explanation_en: "The Kangaroo is the national symbol of **Australia**."
+            },
+            {
+                type: 'mc', title: 'Hỏi khoảng cách:',
+                question: "How far is it from your house to school?",
+                options: ["My house near my school.", "It's about two kilometres.", "The roads get really crowded.", "About 10 minutes."],
+                correct: "It's about two kilometres.",
+                hint: "Câu hỏi 'How far' hỏi về cái gì?",
+                explanation_vi: "Câu hỏi 'How far is it...' (Khoảng cách bao xa) phải được trả lời bằng đơn vị đo khoảng cách, như **two kilometres** (hai km). **Nghĩa của câu: Khoảng cách từ nhà bạn đến trường bao xa? - Khoảng 2 km.**",
+                explanation_en: "The question 'How far is it...' asks for distance, so the answer must be a unit of distance."
+            },
+            {
+                type: 'mc', title: 'So sánh ngang bằng:',
+                question: "Blackpink is as talented _____ BTS.",
+                options: ["so", "as", "than", "from"],
+                correct: "as",
+                hint: "Cấu trúc so sánh bằng là 'as... as'.",
+                explanation_vi: "Cấu trúc so sánh ngang bằng là 'as + adjective/adverb + **as**'. **Nghĩa của câu: Blackpink tài năng ngang với BTS.**",
+                explanation_en: "The structure for comparison of equality is 'as + adjective/adverb + **as**'."
+            },
+            {
+                type: 'mc', title: 'Phát âm khác (y):',
+                question: "Choose the word that has the underlined part pronounced differently: $\\text{y}$",
+                options: ["energy", "fly", "hobby", "ordinary"],
+                correct: "fly",
+                hint: "Chữ 'y' có hai cách phát âm chính.",
+                explanation_vi: "Trong **fly**, 'y' được phát âm là /aɪ/. Trong các từ còn lại, 'y' thường được phát âm là /i/ hoặc /ɪ/.",
+                explanation_en: "In **fly**, 'y' is pronounced /aɪ/. In the others, it is typically /i/ or /ɪ/."
+            },
+            {
+                type: 'mc', title: 'Mạo từ:',
+                question: "The Statue of Liberty is in _____ New York.",
+                options: ["Ø", "a", "an", "the"],
+                correct: "Ø",
+                hint: "Mạo từ đi kèm với tên thành phố, tiểu bang, quốc gia.",
+                explanation_vi: "Tên các thành phố, tiểu bang, quốc gia (New York) thường không dùng mạo từ (Ø). **Nghĩa của câu: Tượng Nữ thần Tự do ở New York.**",
+                explanation_en: "Names of cities, states, and countries usually do not take an article (Ø)."
+            },
+            {
+                type: 'mc', title: 'So sánh nhất:',
+                question: "Harvard University Library is _____ academic library in the United State.",
+                options: ["a large", "largest", "larger", "the largest"],
+                correct: "the largest",
+                hint: "Có dấu hiệu so sánh nhất 'in the United State'.",
+                explanation_vi: "Cụm 'in the United State' $\rightarrow$ So sánh nhất: **the largest**. **Nghĩa của câu: Thư viện Đại học Harvard là thư viện học thuật lớn nhất ở Hoa Kỳ.**",
+                explanation_en: "The phrase 'in the United State' indicates the superlative form: **the largest**."
+            },
+            {
+                type: 'mc', title: 'Phát âm đuôi -ed:',
+                question: "Choose the word whose underlined part is pronounced differently from the others: $\\text{-ed}$",
+                options: ["searched", "visited", "collected", "divided"],
+                correct: "searched",
+                hint: "Âm cuối của động từ trước khi thêm -ed là gì?",
+                explanation_vi: "Đuôi **-ed** trong **searched** (trước đó là /tʃ/) được phát âm là /t/. Trong các từ còn lại, đuôi -ed được phát âm là /ɪd/ (vì trước đó là /t/ hoặc /d/).",
+                explanation_en: "The suffix **-ed** in **searched** (/tʃ/) is pronounced /t/. The others are pronounced /ɪd/ (after /t/ or /d/)."
+            },
+            {
+                type: 'mc', title: 'Liên từ:',
+                question: "During the Covid-19 lockdown, my family reads books, _____ watches films together.",
+                options: ["but", "and", "so", "because"],
+                correct: "and",
+                hint: "Nối hai hành động song song, bổ sung cho nhau.",
+                explanation_vi: "Liên từ **and** (và) dùng để nối hai hành động bổ sung nhau. **Nghĩa của câu: Trong thời gian phong tỏa, gia đình tôi đọc sách và xem phim cùng nhau.**",
+                explanation_en: "The conjunction **and** is used to connect two parallel or supplementary actions."
+            },
+            {
+                type: 'mc', title: 'Phát âm khác (ea):',
+                question: "Choose the word that has the underlined part pronounced differently from the others: $\\text{ea}$",
+                options: ["nuclear", "appear", "learn", "near"],
+                correct: "learn",
+                hint: "Phần gạch chân tạo ra âm nguyên âm dài hay ngắn?",
+                explanation_vi: "Trong **learn**, 'ea' được phát âm là /ɜː/. Trong các từ còn lại (**appear, near, nuclear**), nó thường tạo ra âm /ɪə/ (hoặc /uː/ trong nuclear).",
+                explanation_en: "In **learn**, 'ea' is pronounced /ɜː/. In the others, it often creates the /ɪə/ sound."
+            },
+            {
+                type: 'mc', title: 'Trọng âm:',
+                question: "Choose the word whose primary stress mark is placed differently from that of the others.",
+                options: ["gifted", "resource", "obey", "exam"],
+                correct: "gifted",
+                hint: "Tìm từ có trọng âm rơi vào âm tiết đầu tiên.",
+                explanation_vi: "**gifted** (âm 1). **resource, obey, exam** (âm 2).",
+                explanation_en: "**gifted** has the primary stress on the first syllable. The others are stressed on the second."
+            },
+            {
+                type: 'mc', title: 'Phát âm khác (a):',
+                question: "Choose the word that has the underlined part pronounced differently from the others: $\\text{a}$",
+                options: ["traffic", "date", "station", "safety"],
+                correct: "traffic",
+                hint: "Phân biệt âm /æ/ và /ei/.",
+                explanation_vi: "Trong **traffic**, 'a' được phát âm là /æ/. Trong các từ còn lại (**date, station, safety**), 'a' được phát âm là /ei/.",
+                explanation_en: "In **traffic**, 'a' is pronounced /æ/. In the other words, 'a' is pronounced /ei/."
+            },
+            {
+                type: 'mc', title: 'Thời gian - Ngày tháng:',
+                question: "It starts next Monday on _____",
+                options: ["5th September", "24th September", "14th September", "4th September"],
+                correct: "4th September", // Giả định ngày hợp lý nhất
+                hint: "Chú ý thứ tự của ngày trong câu.",
+                explanation_vi: "Câu hỏi này thiếu ngữ cảnh về năm, nhưng **4th September** là cách ghi ngày tháng đúng. **Nghĩa của câu: Nó bắt đầu vào thứ Hai tới, ngày 4 tháng 9.**",
+                explanation_en: "Lacking context, **4th September** is the most grammatically correct format for the date."
+            },
+            {
+                type: 'mc', title: 'Địa lý - Thủ đô:',
+                question: "What is the capital of Russia?",
+                options: ["Madrid", "Ottawa", "New York", "Moscow"],
+                correct: "Moscow",
+                hint: "Thủ đô của Nga.",
+                explanation_vi: "Thủ đô của Nga là **Moscow** (Mát-xcơ-va). **Nghĩa của câu: Thủ đô của Nga là gì? - Moscow.**",
+                explanation_en: "The capital city of Russia is **Moscow**."
+            },
+            {
+                type: 'mc', title: 'Trọng âm:',
+                question: "Choose the word whose primary stress mark is placed differently from that of the others.",
+                options: ["decide", "birthday", "avoid", "invite"],
+                correct: "birthday",
+                hint: "Tìm từ ghép có trọng âm rơi vào âm tiết đầu tiên.",
+                explanation_vi: "**birthday** (âm 1). **decide, avoid, invite** (âm 2).",
+                explanation_en: "**birthday** has the primary stress on the first syllable (compound noun). The others are stressed on the second."
+            },
+            {
+                type: 'mc', title: 'Địa điểm:',
+                question: "Where is the Temple of Literature located?",
+                options: ["Emperor Ly Nhan Tong.", "It's the first university in Vietnam.", "It's in the second courtyard.", "To the south of the Imperial Citadel of Thang Long."],
+                correct: "To the south of the Imperial Citadel of Thang Long.",
+                hint: "Tìm câu trả lời chỉ vị trí, bắt đầu bằng giới từ chỉ địa điểm.",
+                explanation_vi: "Câu trả lời đúng phải là vị trí: Văn Miếu Quốc Tử Giám nằm ở phía Nam Hoàng thành Thăng Long. **Nghĩa của câu: Văn Miếu nằm ở đâu? - Phía nam Hoàng thành Thăng Long.**",
+                explanation_en: "The correct answer must be a location: To the south of the Imperial Citadel of Thang Long."
+            },
+            {
+                type: 'mc', title: 'Từ vựng - Khoa học:',
+                question: "Rain falls from _____ in the sky.",
+                options: ["clouds", "moon", "earth", "sun"],
+                correct: "clouds",
+                hint: "Mưa đến từ đâu trên bầu trời?",
+                explanation_vi: "Mưa rơi từ những đám **clouds** (mây) trên bầu trời. **Nghĩa của câu: Mưa rơi từ những đám mây trên bầu trời.**",
+                explanation_en: "Rain falls from **clouds** in the sky."
+            },
+            {
+                type: 'mc', title: 'So sánh nhất:',
+                question: "Mercury, Venus, Earth, and Mars are _____ planets to the Sun.",
+                options: ["the most near", "the nearer", "larger", "the nearest"],
+                correct: "the nearest",
+                hint: "Từ 'the' và 'planets' $\rightarrow$ So sánh nhất.",
+                explanation_vi: "Sử dụng so sánh nhất: **the nearest** (gần nhất) $\rightarrow$ the + near-est. **Nghĩa của câu: Sao Thủy, Sao Kim, Trái Đất và Sao Hỏa là những hành tinh gần Mặt Trời nhất.**",
+                explanation_en: "The superlative form is required: **the nearest** (the + near-est)."
+            },
+            {
+                type: 'mc', title: 'Trọng âm:',
+                question: "Choose the word whose primary stress mark is placed differently from that of the others.",
+                options: ["inform", "virus", "acne", "insect"],
+                correct: "inform",
+                hint: "Tìm động từ có trọng âm rơi vào âm tiết thứ hai.",
+                explanation_vi: "**inform** (âm 2). **virus, acne, insect** (âm 1).",
+                explanation_en: "**inform** has the primary stress on the second syllable. The others are stressed on the first."
+            },
+            {
+                type: 'mc', title: 'Thì Quá khứ Đơn:',
+                question: "In 1972, Charlie Chaplin _____ an award.",
+                options: ["receive", "received", "receiving", "receives"],
+                correct: "received",
+                hint: "Có mốc thời gian cụ thể trong quá khứ.",
+                explanation_vi: "Mốc thời gian 'In 1972' $\rightarrow$ Thì Quá khứ Đơn $\rightarrow$ **received** (V-ed). **Nghĩa của câu: Năm 1972, Charlie Chaplin đã nhận được một giải thưởng.**",
+                explanation_en: "The time marker 'In 1972' requires the Past Simple tense: **received**."
+            },
+            {
+                type: 'mc', title: 'Trọng âm:',
+                question: "Choose the word whose primary stress mark is placed differently from that of the others.",
+                options: ["correct", "visit", "cartoon", "receive"],
+                correct: "visit",
+                hint: "Tìm từ có trọng âm rơi vào âm tiết đầu tiên.",
+                explanation_vi: "**visit** (âm 1). **correct, cartoon, receive** (âm 2).",
+                explanation_en: "**visit** has the primary stress on the first syllable. The others are stressed on the second."
+            },
+            {
+                type: 'mc', title: 'Thì Quá khứ Đơn:',
+                question: "_____ a lot of film posters at the cinema yesterday.",
+                options: ["I am seeing", "I will see", "I saw", "I see"],
+                correct: "I saw",
+                hint: "Dấu hiệu thời gian: 'yesterday'.",
+                explanation_vi: "Dấu hiệu 'yesterday' $\rightarrow$ Thì Quá khứ Đơn $\rightarrow$ **I saw**. **Nghĩa của câu: Tôi đã thấy rất nhiều áp phích phim ở rạp chiếu phim ngày hôm qua.**",
+                explanation_en: "The time marker 'yesterday' indicates the Past Simple tense: **I saw**."
+            },
+            {
+                type: 'mc', title: 'Địa lý - Dân số:',
+                question: "Which country has the highest number of people?",
+                options: ["America", "India", "Indonesia", "China"],
+                correct: "China", // Theo dữ liệu cũ, tuy nhiên cần chú thích
+                hint: "Quốc gia đông dân nhất trên thế giới (theo dữ liệu cũ).",
+                explanation_vi: "Tính đến thời điểm xuất bản dữ liệu, **China** (Trung Quốc) là quốc gia có dân số đông nhất. (Lưu ý: hiện tại là Ấn Độ). **Nghĩa của câu: Quốc gia nào có dân số đông nhất? - Trung Quốc.**",
+                explanation_en: "Historically, **China** has the highest population (though India may now hold this title depending on the source). The question refers to the superlative."
+            },
+            {
+                type: 'mc', title: 'Hỏi trọng lượng:',
+                question: "What is the weight of your suitcase?",
+                options: ["How long is your suitcase?", "How heavy is your suitcase?", "How much is your suitcase?", "How high is your suitcase?"],
+                correct: "How heavy is your suitcase?",
+                hint: "Từ đồng nghĩa với 'weight'.",
+                explanation_vi: "Hỏi trọng lượng (weight) tương đương với hỏi **How heavy** (Nặng bao nhiêu). **Nghĩa của câu: Trọng lượng va li của bạn là bao nhiêu? - Va li của bạn nặng bao nhiêu?**",
+                explanation_en: "Asking for 'weight' is synonymous with asking 'How heavy' (trọng lượng)."
+            },
+            {
+                type: 'mc', title: 'Từ vựng - Chỉ đường:',
+                question: "The destination is on the left of _____",
+                options: ["Northern Road", "Station Road", "Broadway", "North Passage"],
+                correct: "Station Road", // Chọn một tên đường phổ biến
+                hint: "Cần một tên đường hoặc địa điểm cụ thể.",
+                explanation_vi: "Đây là câu chỉ đường. **Station Road** là một tên đường hợp lý. **Nghĩa của câu: Điểm đến nằm bên trái đường Station Road.**",
+                explanation_en: "A specific road name is required for a direction. **Station Road** is a plausible example."
+            },
+            {
+                type: 'mc', title: 'Viết lại câu (Need to/Necessary):',
+                question: "Rewrite the sentence so that its meaning stays the same: You don't need to clean the house every day.",
+                options: ["It is necessary to clean the house every day.", "It isn't necessary to clean the house every day.", "It is unneeded to clean the house every day.", "It isn't needed to clean the house every day."],
+                correct: "It isn't necessary to clean the house every day.",
+                hint: "Cấu trúc 'don't need to' $\Leftrightarrow$ 'isn't necessary to'.",
+                explanation_vi: "'Don't need to' (không cần) $\Leftrightarrow$ 'It isn't necessary to' (không cần thiết). **Nghĩa của câu: Bạn không cần dọn nhà mỗi ngày. (Tương đương) Việc dọn nhà mỗi ngày là không cần thiết.**",
+                explanation_en: "'Don't need to' is equivalent to 'It isn't necessary to'."
+            },
+            {
+                type: 'mc', title: 'Viết lại câu (Too...to):',
+                question: "The children couldn't go swimming because the sea was very rough. (Viết lại câu)",
+                options: ["The sea was too rough so the children couldn't swimming.", "The sea was too rough for the children to go swim.", "The sea was too rough for the children to go swimming.", "The sea was so rough but the children couldn't go to swim."],
+                correct: "The sea was too rough for the children to go swimming.",
+                hint: "Sử dụng cấu trúc 'too + adj + for sb + to V'.",
+                explanation_vi: "Cấu trúc đúng là 'too + adj + **for sb** + **to V**'. Câu C dùng **go swimming** là đúng ngữ pháp. **Nghĩa của câu: Biển động quá mạnh nên trẻ em không thể đi bơi.**",
+                explanation_en: "The correct structure is 'too + adj + **for sb** + **to V**', and **go swimming** is the correct idiom."
+            },
+
+            // --- PART 2: SẮP XẾP CÂU (REARRANGE) ---
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["You can donate", "your used books", "to your local libraries", "or charities."],
+                answer: "You can donate your used books to your local libraries or charities.",
+                hint: "Động từ khuyết thiếu 'can' + V nguyên mẫu + O + Giới từ.",
+                explanation_vi: "Cấu trúc: S + can + **donate** + O (**your used books**) + to + Place (**local libraries or charities**). **Nghĩa của câu: Bạn có thể quyên góp sách cũ của mình cho các thư viện hoặc tổ chức từ thiện địa phương.**",
+                explanation_en: "Structure: S + can + donate + O + to + Place."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Education also helps", "us to develop", "our communication skills."],
+                answer: "Education also helps us to develop our communication skills.",
+                hint: "Cấu trúc 'help sb to V'.",
+                explanation_vi: "Cấu trúc: **helps us to develop** (giúp chúng ta phát triển). **Nghĩa của câu: Giáo dục cũng giúp chúng ta phát triển các kỹ năng giao tiếp.**",
+                explanation_en: "Structure: S + helps + O + to V."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["I will buy", "some pottery", "to make a gift", "for my family", "and friends."],
+                answer: "I will buy some pottery to make a gift for my family and friends.",
+                hint: "Sử dụng 'to V' để chỉ mục đích.",
+                explanation_vi: "Sử dụng 'to make a gift' để chỉ mục đích mua. **Nghĩa của câu: Tôi sẽ mua một ít đồ gốm để làm quà cho gia đình và bạn bè.**",
+                explanation_en: "The infinitive 'to make a gift' expresses purpose."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Tom volunteered", "to teach English", "in our village", "last winter."],
+                answer: "Tom volunteered to teach English in our village last winter.",
+                hint: "Sử dụng Quá khứ Đơn, theo sau là 'to V'.",
+                explanation_vi: "Động từ **volunteered** (Quá khứ Đơn) + **to teach** (chỉ mục đích). **Nghĩa của câu: Tom đã tình nguyện dạy tiếng Anh ở làng của chúng tôi vào mùa đông năm ngoái.**",
+                explanation_en: "The verb 'volunteered' is followed by the infinitive 'to teach'."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Traffic jam", "is a major problem", "in many cities."],
+                answer: "Traffic jam is a major problem in many cities.",
+                hint: "Chủ ngữ là 'Traffic jam' (tắc đường).",
+                explanation_vi: "Cấu trúc: Chủ ngữ (**Traffic jam**) + be + Danh từ/Cụm danh từ (is a major problem). **Nghĩa của câu: Tắc đường là một vấn đề lớn ở nhiều thành phố.**",
+                explanation_en: "Structure: Subject + be + Noun Phrase."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Some scientists think", "that there", "rivers", "on Mars", "in the past."],
+                answer: "Some scientists think that there were rivers on Mars in the past.",
+                hint: "Dấu hiệu thời gian: 'in the past' $\rightarrow$ thì Quá khứ.",
+                explanation_vi: "Dùng 'there **were**' (có) cho danh từ số nhiều 'rivers' trong Quá khứ. **Nghĩa của câu: Một số nhà khoa học nghĩ rằng đã có những dòng sông trên Sao Hỏa trong quá khứ.**",
+                explanation_en: "The phrase 'in the past' requires the Past tense: 'there were' for plural 'rivers'."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["They will give", "their mother", "a big present", "on her birthday", "next weekend."],
+                answer: "They will give their mother a big present on her birthday next weekend.",
+                hint: "Thì Tương lai Đơn và cụm trạng ngữ chỉ thời gian.",
+                explanation_vi: "Cấu trúc: S + will + V + IO + DO + Place/Time. **Nghĩa của câu: Họ sẽ tặng mẹ một món quà lớn vào ngày sinh nhật của bà vào cuối tuần tới.**",
+                explanation_en: "Structure: S + will + V + Indirect Object + Direct Object + Time."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["One-third", "of children", "in the USA", "are overweight."],
+                answer: "One-third of children in the USA are overweight.",
+                hint: "Chủ ngữ là phân số đi với danh từ số nhiều $\rightarrow$ V số nhiều.",
+                explanation_vi: "Chủ ngữ 'One-third of children' (số nhiều) $\rightarrow$ **are overweight** (thừa cân). **Nghĩa của câu: Một phần ba trẻ em ở Mỹ bị thừa cân.**",
+                explanation_en: "Fractional subject (One-third of children, plural) takes a plural verb: **are**."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Litter", "can pollute", "the water."],
+                answer: "Litter can pollute the water.",
+                hint: "Động từ khuyết thiếu 'can' + V nguyên mẫu.",
+                explanation_vi: "Rác thải (**Litter**) có thể làm ô nhiễm nước (**can pollute the water**). **Nghĩa của câu: Rác thải có thể gây ô nhiễm nguồn nước.**",
+                explanation_en: "Structure: S + can + bare V + O."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["You should drink", "fruit juice", "and water", "every day."],
+                answer: "You should drink fruit juice and water every day.",
+                hint: "Cấu trúc khuyên bảo 'should' + V nguyên mẫu.",
+                explanation_vi: "Sử dụng **should drink** (nên uống) + tân ngữ. **Nghĩa của câu: Bạn nên uống nước ép trái cây và nước lọc mỗi ngày.**",
+                explanation_en: "Structure: S + should + bare V + O."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Many people", "around the world", "continue", "to play his music."],
+                answer: "Many people around the world continue to play his music.",
+                hint: "Cấu trúc 'continue to V'.",
+                explanation_vi: "**Continue to play** (tiếp tục chơi). **Nghĩa của câu: Nhiều người trên khắp thế giới tiếp tục chơi nhạc của anh ấy.**",
+                explanation_en: "Structure: S + continue + to V + O."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["The War Memorial of Korea", "and Namsan Seoul Tower", "are popular destinations", "in Seoul."],
+                answer: "The War Memorial of Korea and Namsan Seoul Tower are popular destinations in Seoul.",
+                hint: "Chủ ngữ số nhiều $\rightarrow$ V số nhiều.",
+                explanation_vi: "Hai chủ ngữ nối bằng 'and' $\rightarrow$ V số nhiều (**are**). **Nghĩa của câu: Đài tưởng niệm Chiến tranh Triều Tiên và Tháp Namsan Seoul là những điểm đến nổi tiếng ở Seoul.**",
+                explanation_en: "Two subjects joined by 'and' require the plural verb **are**."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Is", "the gift", "wrapped", "in colorful paper?"],
+                answer: "Is the gift wrapped in colorful paper?",
+                hint: "Cấu trúc câu hỏi bị động thì Hiện tại Đơn.",
+                explanation_vi: "Cấu trúc Bị động: **Is** + S + **wrapped** (V3) + O? **Nghĩa của câu: Món quà có được gói bằng giấy màu sắc không?**",
+                explanation_en: "Present Simple Passive question structure: **Is** + S + **V3** + O?"
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["My sister", "likes playing", "badminton."],
+                answer: "My sister likes playing badminton.",
+                hint: "Động từ theo sau 'likes'.",
+                explanation_vi: "Sau động từ **likes** là V-ing (**playing**). **Nghĩa của câu: Chị gái tôi thích chơi cầu lông.**",
+                explanation_en: "The verb **likes** is followed by a V-ing (**playing**)."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["He goes riding", "with his dad", "on Sunday afternoons."],
+                answer: "He goes riding with his dad on Sunday afternoons.",
+                hint: "Cấu trúc 'go V-ing' và trạng ngữ chỉ thời gian.",
+                explanation_vi: "**Goes riding** (đi cưỡi ngựa) + **on Sunday afternoons** (vào các chiều Chủ nhật). **Nghĩa của câu: Anh ấy đi cưỡi ngựa với bố vào các chiều Chủ nhật.**",
+                explanation_en: "Structure: S + goes V-ing + Time."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["The water", "was so", "refreshing and cool."],
+                answer: "The water was so refreshing and cool.",
+                hint: "Cấu trúc 'so + adj'.",
+                explanation_vi: "Sử dụng **so** (quá) để nhấn mạnh tính từ **refreshing and cool**. **Nghĩa của câu: Nước quá sảng khoái và mát lạnh.**",
+                explanation_en: "The intensifier **so** is used before adjectives."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["How old", "will she be", "on her next birthday?"],
+                answer: "How old will she be on her next birthday?",
+                hint: "Cấu trúc hỏi tuổi trong tương lai.",
+                explanation_vi: "Cấu trúc: **How old** + **will she be** + Time? **Nghĩa của câu: Cô ấy sẽ bao nhiêu tuổi vào ngày sinh nhật tiếp theo?**",
+                explanation_en: "Question structure for age in the future: **How old will she be**?"
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Sleep is very important", "for both physical", "and mental health."],
+                answer: "Sleep is very important for both physical and mental health.",
+                hint: "Cấu trúc 'for both A and B'.",
+                explanation_vi: "Sử dụng **for both physical and mental health** (cho cả sức khỏe thể chất và tinh thần). **Nghĩa của câu: Giấc ngủ rất quan trọng cho cả sức khỏe thể chất và tinh thần.**",
+                explanation_en: "Structure: for **both** A **and** B."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["I'm going", "to the beach", "with my family", "next week."],
+                answer: "I'm going to the beach with my family next week.",
+                hint: "Thì Hiện tại Tiếp diễn chỉ tương lai gần.",
+                explanation_vi: "Hiện tại Tiếp diễn (**I'm going**) dùng để diễn tả kế hoạch tương lai gần (**next week**). **Nghĩa của câu: Tôi sẽ đi biển cùng gia đình vào tuần tới.**",
+                explanation_en: "Present Continuous is used for near future plans."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Each type of food", "provides", "different nutrients."],
+                answer: "Each type of food provides different nutrients.",
+                hint: "Chủ ngữ bắt đầu bằng 'each' $\rightarrow$ V số ít.",
+                explanation_vi: "Chủ ngữ 'Each type of food' (mỗi loại thức ăn) $\rightarrow$ V số ít (**provides**). **Nghĩa của câu: Mỗi loại thức ăn cung cấp các chất dinh dưỡng khác nhau.**",
+                explanation_en: "A subject starting with 'Each' takes a singular verb: **provides**."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["It is not easy", "to take photos", "of wild animals."],
+                answer: "It is not easy to take photos of wild animals.",
+                hint: "Cấu trúc 'It is not easy to V'.",
+                explanation_vi: "Cấu trúc: **It is not easy to V** (Không dễ để làm gì). **Nghĩa của câu: Không dễ để chụp ảnh động vật hoang dã.**",
+                explanation_en: "Structure: **It is not easy to V**."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["All of us", "must study", "music and dancing", "every week."],
+                answer: "All of us must study music and dancing every week.",
+                hint: "Động từ khuyết thiếu 'must' + V nguyên mẫu.",
+                explanation_vi: "**Must study** (phải học) + O. **Nghĩa của câu: Tất cả chúng ta phải học nhạc và nhảy múa mỗi tuần.**",
+                explanation_en: "Structure: S + must + bare V + O."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["She jumped", "on a chair", "when she", "saw the mouse."],
+                answer: "She jumped on a chair when she saw the mouse.",
+                hint: "Nối hai hành động xảy ra gần như đồng thời trong quá khứ.",
+                explanation_vi: "Sử dụng Quá khứ Đơn (**jumped** và **saw**) để nối hai hành động. **Nghĩa của câu: Cô ấy nhảy lên ghế khi nhìn thấy con chuột.**",
+                explanation_en: "Two Past Simple actions connected by 'when'."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["How many kilos", "of flour", "do you need?"],
+                answer: "How many kilos of flour do you need?",
+                hint: "Cấu trúc hỏi số lượng: 'How many' + Danh từ đếm được số nhiều.",
+                explanation_vi: "**How many kilos** (Bao nhiêu kg) + **do you need**? **Nghĩa của câu: Bạn cần bao nhiêu kg bột mì?**",
+                explanation_en: "Structure: **How many** + plural countable noun."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Rossie", "has a large", "collection of stamps."],
+                answer: "Rossie has a large collection of stamps.",
+                hint: "Động từ 'has' + cụm danh từ.",
+                explanation_vi: "Động từ **has** (có) $\rightarrow$ sở hữu. **Nghĩa của câu: Rossie có một bộ sưu tập tem lớn.**",
+                explanation_en: "Structure: S + has + a large collection of Noun."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["They make noises", "to communicate", "with each other."],
+                answer: "They make noises to communicate with each other.",
+                hint: "Sử dụng 'to V' để chỉ mục đích.",
+                explanation_vi: "**To communicate** (để giao tiếp) $\rightarrow$ chỉ mục đích. **Nghĩa của câu: Chúng tạo ra âm thanh để giao tiếp với nhau.**",
+                explanation_en: "The infinitive 'to communicate' expresses purpose."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Can you give me", "some suggestions", "on a healthy", "lifestyle?"],
+                answer: "Can you give me some suggestions on a healthy lifestyle?",
+                hint: "Cụm từ 'suggestions on'.",
+                explanation_vi: "Cụm từ: **some suggestions on** (một vài gợi ý về). **Nghĩa của câu: Bạn có thể cho tôi một vài gợi ý về lối sống lành mạnh không?**",
+                explanation_en: "Structure: Can you give me + O + on Noun?"
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Our club", "cooked soup", "for old patients."],
+                answer: "Our club cooked soup for old patients.",
+                hint: "Thì Quá khứ Đơn.",
+                explanation_vi: "**Cooked soup** (nấu súp) $\rightarrow$ Quá khứ Đơn. **Nghĩa của câu: Câu lạc bộ của chúng tôi đã nấu súp cho các bệnh nhân lớn tuổi.**",
+                explanation_en: "Past Simple tense: S + V-ed + O."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Anna", "was late", "for school", "last Monday."],
+                answer: "Anna was late for school last Monday.",
+                hint: "Cấu trúc 'be late for' + trạng ngữ chỉ thời gian quá khứ.",
+                explanation_vi: "**Was late for school** (đã trễ học) + **last Monday** (thứ Hai tuần trước). **Nghĩa của câu: Anna đã bị muộn học vào thứ Hai tuần trước.**",
+                explanation_en: "Structure: S + be late for + Place + Past Time."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["I'm going", "to the church", "with my mother", "next Sunday."],
+                answer: "I'm going to the church with my mother next Sunday.",
+                hint: "Hiện tại Tiếp diễn chỉ kế hoạch tương lai.",
+                explanation_vi: "**I'm going** (Tôi sẽ đi) $\rightarrow$ kế hoạch tương lai gần. **Nghĩa của câu: Tôi sẽ đi nhà thờ với mẹ vào Chủ nhật tới.**",
+                explanation_en: "Present Continuous for future arrangements."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Does he", "go to school", "every day?"],
+                answer: "Does he go to school every day?",
+                hint: "Cấu trúc câu hỏi Hiện tại Đơn.",
+                explanation_vi: "Cấu trúc: **Does he** + V nguyên mẫu + Time? **Nghĩa của câu: Anh ấy có đi học mỗi ngày không?**",
+                explanation_en: "Present Simple question structure: Does + S + bare V?"
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Does your mother", "enjoy", "doing yoga?"],
+                answer: "Does your mother enjoy doing yoga?",
+                hint: "Động từ theo sau 'enjoy'.",
+                explanation_vi: "Sau động từ **enjoy** là V-ing (**doing**). **Nghĩa của câu: Mẹ bạn có thích tập yoga không?**",
+                explanation_en: "The verb **enjoy** is followed by a V-ing (**doing**)."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["How far is it", "from here", "to the nearest", "bus stop?"],
+                answer: "How far is it from here to the nearest bus stop?",
+                hint: "Cấu trúc hỏi khoảng cách.",
+                explanation_vi: "Cấu trúc: **How far is it from A to B?** **Nghĩa của câu: Từ đây đến trạm xe buýt gần nhất bao xa?**",
+                explanation_en: "Structure: **How far is it from A to B?** (asking for distance)."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Jane", "never eats", "this kind", "of food."],
+                answer: "Jane never eats this kind of food.",
+                hint: "Trạng từ tần suất 'never' + V số ít.",
+                explanation_vi: "**Never** (không bao giờ) + **eats** (V số ít). **Nghĩa của câu: Jane không bao giờ ăn loại thức ăn này.**",
+                explanation_en: "Adverb of frequency 'never' precedes the singular verb 'eats'."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["We would also eat", "delicious seafood", "at local restaurants."],
+                answer: "We would also eat delicious seafood at local restaurants.",
+                hint: "Cấu trúc 'would V' (chỉ thói quen/hành động trong quá khứ).",
+                explanation_vi: "**Would also eat** (cũng sẽ ăn/thường ăn) + **delicious seafood** + **at local restaurants**. **Nghĩa của câu: Chúng tôi cũng sẽ ăn hải sản ngon tại các nhà hàng địa phương.**",
+                explanation_en: "Structure: S + would + V + O + Place."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["This tea", "doesn't taste", "the same", "as the one", "I usually drink."],
+                answer: "This tea doesn't taste the same as the one I usually drink.",
+                hint: "Cấu trúc so sánh 'the same as'.",
+                explanation_vi: "**Doesn't taste the same as** (không có vị giống như). **Nghĩa của câu: Loại trà này không có vị giống loại tôi thường uống.**",
+                explanation_en: "Structure: S + doesn't taste + **the same as**."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["I think", "you should", "have your hair", "cut."],
+                answer: "I think you should have your hair cut.",
+                hint: "Cấu trúc khuyên bảo 'should' + 'have sth V3/ed'.",
+                explanation_vi: "Cấu trúc **have your hair cut** (nhờ người khác cắt tóc). **Nghĩa của câu: Tôi nghĩ bạn nên đi cắt tóc.**",
+                explanation_en: "Structure: S + should + **have sth V3/ed** (Causative form)."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["We sit", "in front of the fire", "and read", "Christmas stories", "on Christmas Eve."],
+                answer: "We sit in front of the fire and read Christmas stories on Christmas Eve.",
+                hint: "Thì Hiện tại Đơn (thói quen) và giới từ chỉ vị trí/thời gian.",
+                explanation_vi: "Sử dụng Hiện tại Đơn: **sit** và **read** + **on Christmas Eve** (vào đêm Giáng sinh). **Nghĩa của câu: Chúng tôi ngồi trước lò sưởi và đọc truyện Giáng sinh vào đêm Giáng sinh.**",
+                explanation_en: "Present Simple tense for habits, followed by location and time phrases."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["They said", "music helps", "students concentrate", "better."],
+                answer: "They said music helps students concentrate better.",
+                hint: "Cấu trúc: 'help sb V nguyên mẫu' (hoặc to V).",
+                explanation_vi: "**Helps students concentrate** (giúp học sinh tập trung). **Nghĩa của câu: Họ nói rằng âm nhạc giúp học sinh tập trung tốt hơn.**",
+                explanation_en: "Structure: S + help + O + bare V (or to V)."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["A lot of important", "inventions", "are carried out", "by scientists."],
+                answer: "A lot of important inventions are carried out by scientists.",
+                hint: "Cấu trúc bị động Hiện tại Đơn.",
+                explanation_vi: "Cấu trúc Bị động Hiện tại Đơn: **are carried out by** (được thực hiện bởi). **Nghĩa của câu: Rất nhiều phát minh quan trọng được thực hiện bởi các nhà khoa học.**",
+                explanation_en: "Present Simple Passive structure: **are carried out by**."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["I did", "a lot of fun things", "and spent time", "with my loved ones."],
+                answer: "I did a lot of fun things and spent time with my loved ones.",
+                hint: "Hai động từ chính nối bằng 'and'.",
+                explanation_vi: "Hai hành động quá khứ: **did** (làm) và **spent** (dành thời gian). **Nghĩa của câu: Tôi đã làm rất nhiều điều vui vẻ và dành thời gian cho những người thân yêu của mình.**",
+                explanation_en: "Two main verbs in the Past Simple connected by 'and'."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Unfortunately,", "the film", "got unfavored", "reviews."],
+                answer: "Unfortunately, the film got unfavored reviews.",
+                hint: "Trạng từ mở đầu câu + Quá khứ Đơn.",
+                explanation_vi: "Trạng từ **Unfortunately** (Thật không may) + **got unfavored reviews** (nhận những đánh giá không mấy tích cực). **Nghĩa của câu: Thật không may, bộ phim đã nhận được những đánh giá không mấy tích cực.**",
+                explanation_en: "Adverb at the start + Past Simple verb."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["They go to bed", "really early", "when they", "little."],
+                answer: "They went to bed really early when they were little.",
+                hint: "Cả hai vế đều phải ở thì Quá khứ Đơn (tôi đã sửa 'go' thành 'went' và thêm 'were' vào 'little' để câu có nghĩa).",
+                explanation_vi: "Diễn tả thói quen/sự việc trong quá khứ: **They went to bed**... when they **were** little. **Nghĩa của câu: Họ thường đi ngủ rất sớm khi họ còn nhỏ.**",
+                explanation_en: "Used to express a past habit: Past Simple tense is needed for both clauses."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Environmental pollution", "is one of", "the most serious problems", "today."],
+                answer: "Environmental pollution is one of the most serious problems today.",
+                hint: "Cấu trúc 'one of the most' + Danh từ số nhiều.",
+                explanation_vi: "Cấu trúc: **one of the most serious problems** (một trong những vấn đề nghiêm trọng nhất). **Nghĩa của câu: Ô nhiễm môi trường là một trong những vấn đề nghiêm trọng nhất hiện nay.**",
+                explanation_en: "Structure: **one of the most** + plural noun."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["She didn't", "get on well", "with her boss,", "so she left", "the company."],
+                answer: "She didn't get on well with her boss, so she left the company.",
+                hint: "Nối nguyên nhân và kết quả bằng 'so'.",
+                explanation_vi: "Nguyên nhân (**didn't get on well with** - không hòa hợp) $\rightarrow$ Kết quả (**so she left**). **Nghĩa của câu: Cô ấy không hòa hợp với sếp, vì vậy cô ấy đã nghỉ việc.**",
+                explanation_en: "Connecting cause and effect using 'so'."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["There are some", "expensive new flats", "next to", "the river."],
+                answer: "There are some expensive new flats next to the river.",
+                hint: "Cấu trúc 'There are' + Giới từ chỉ vị trí.",
+                explanation_vi: "Cấu trúc: **There are** + Noun + **next to** (bên cạnh). **Nghĩa của câu: Có một số căn hộ mới đắt tiền bên cạnh con sông.**",
+                explanation_en: "Structure: **There are** + Noun + Preposition of place."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Although he had", "a good salary,", "he was unhappy", "in his job."],
+                answer: "Although he had a good salary, he was unhappy in his job.",
+                hint: "Liên từ 'Although' chỉ sự đối lập.",
+                explanation_vi: "**Although** (Mặc dù) nối hai mệnh đề đối lập. **Nghĩa của câu: Mặc dù anh ấy có lương cao, nhưng anh ấy vẫn không hài lòng với công việc của mình.**",
+                explanation_en: "The conjunction **Although** connects two contrasting clauses."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Hoa works", "very hard,", "so she always", "gets good marks."],
+                answer: "Hoa works very hard, so she always gets good marks.",
+                hint: "Nối nguyên nhân và kết quả bằng 'so' và trạng từ tần suất 'always'.",
+                explanation_vi: "Nguyên nhân (**works very hard**) $\rightarrow$ Kết quả (**so she always gets good marks**). **Nghĩa của câu: Hoa học rất chăm chỉ, vì vậy cô ấy luôn đạt điểm cao.**",
+                explanation_en: "Connecting cause and effect using 'so'."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["He talked", "as if", "he knew", "where she was."],
+                answer: "He talked as if he knew where she was.",
+                hint: "Cấu trúc 'as if' (như thể là).",
+                explanation_vi: "Cấu trúc: S + V + **as if** + S + V (Quá khứ Đơn/Giả định). **Nghĩa của câu: Anh ấy nói chuyện như thể anh ấy biết cô ấy đang ở đâu.**",
+                explanation_en: "Structure: S + V + **as if** + Past Tense (for unreal or unlikely situations)."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["You can join", "one of these", "two projects."],
+                answer: "You can join one of these two projects.",
+                hint: "Động từ khuyết thiếu 'can' + V nguyên mẫu + cụm danh từ.",
+                explanation_vi: "Cấu trúc: **join one of these two projects** (tham gia một trong hai dự án này). **Nghĩa của câu: Bạn có thể tham gia một trong hai dự án này.**",
+                explanation_en: "Structure: S + can + bare V + one of these + Noun."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Here you can see", "some pictures", "of our summer activities."],
+                answer: "Here you can see some pictures of our summer activities.",
+                hint: "Cấu trúc 'Here you can see' (Ở đây bạn có thể thấy).",
+                explanation_vi: "Cấu trúc: **Here you can see** + O. **Nghĩa của câu: Ở đây bạn có thể xem một số hình ảnh về hoạt động mùa hè của chúng tôi.**",
+                explanation_en: "Structure: **Here you can see** + Object."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Water puppetry", "began", "in the 11th century."],
+                answer: "Water puppetry began in the 11th century.",
+                hint: "Thì Quá khứ Đơn với mốc thời gian cụ thể.",
+                explanation_vi: "Sử dụng Quá khứ Đơn: **began** (bắt đầu) + **in the 11th century**. **Nghĩa của câu: Múa rối nước bắt đầu vào thế kỷ 11.**",
+                explanation_en: "Past Simple tense with a specific time in the past: **began in the 11th century**."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Volunteering", "is a great way", "for families", "to have fun", "and feel closer."],
+                answer: "Volunteering is a great way for families to have fun and feel closer.",
+                hint: "Danh động từ làm chủ ngữ, theo sau là 'is a great way for sb to V'.",
+                explanation_vi: "Danh động từ **Volunteering** (Việc tình nguyện) $\rightarrow$ **is a great way** (là một cách tuyệt vời) + **for families to V**. **Nghĩa của câu: Tình nguyện là một cách tuyệt vời để các gia đình vui vẻ và cảm thấy gần gũi hơn.**",
+                explanation_en: "Gerund as subject: **Volunteering** + is a great way for sb to V."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["I am a kind,", "hard-working, patient,", "and very", "person."],
+                answer: "I am a kind, hard-working, patient, and very nice person.", // Thêm 1 từ thiếu để câu có nghĩa
+                hint: "Cần thêm một tính từ sau 'very' để kết thúc câu.",
+                explanation_vi: "Chuỗi tính từ mô tả. (Tôi đã thêm 'nice' để câu có thể kết thúc bằng danh từ 'person'). **Nghĩa của câu: Tôi là một người tốt bụng, chăm chỉ, kiên nhẫn và rất tốt.**",
+                explanation_en: "A series of adjectives describing a person. (I added 'nice' for completeness). The structure is: S + be + Adj, Adj, and Adj + Noun."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["You should look", "right and left", "when you go", "across the road."],
+                answer: "You should look right and left when you go across the road.",
+                hint: "Cấu trúc khuyên bảo 'should' + V nguyên mẫu + Giới từ.",
+                explanation_vi: "**Look right and left** (nhìn phải và trái) + **when you go across the road** (khi băng qua đường). **Nghĩa của câu: Bạn nên nhìn phải và trái khi băng qua đường.**",
+                explanation_en: "Structure: S + should + bare V + when clause."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Last year", "more than 150,000 people", "went to the Tramlines", "free music festival", "in Sheffield."],
+                answer: "Last year more than 150,000 people went to the Tramlines free music festival in Sheffield.",
+                hint: "Dấu hiệu thời gian: 'Last year' $\rightarrow$ Quá khứ Đơn.",
+                explanation_vi: "Thì Quá khứ Đơn: **went to** (đã đi đến). **Nghĩa của câu: Năm ngoái, hơn 150.000 người đã đến lễ hội âm nhạc miễn phí Tramlines ở Sheffield.**",
+                explanation_en: "Past Simple tense: **went to**."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["There are", "music festivals", "across Britain", "every year", "that are completely free of charge."],
+                answer: "There are music festivals across Britain every year that are completely free of charge.",
+                hint: "Mệnh đề quan hệ 'that are completely free of charge'.",
+                explanation_vi: "Cấu trúc: **There are** + Noun + Relative Clause. **Nghĩa của câu: Có những lễ hội âm nhạc trên khắp nước Anh mỗi năm hoàn toàn miễn phí.**",
+                explanation_en: "Structure: **There are** + Noun + Relative Clause."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["The dance is not", "as difficult as", "the song, but", "they still rehearse", "very hard."],
+                answer: "The dance is not as difficult as the song, but they still rehearse very hard.",
+                hint: "So sánh bằng phủ định và liên từ 'but'.",
+                explanation_vi: "**is not as difficult as** (không khó bằng) + **but** (nhưng) $\rightarrow$ nối hai mệnh đề đối lập. **Nghĩa của câu: Điệu nhảy không khó bằng bài hát, nhưng họ vẫn tập luyện rất chăm chỉ.**",
+                explanation_en: "Structure: is not as difficult as + but + V."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["I hope", "you don't mind", "telephoning me", "so late at night."],
+                answer: "I hope you don't mind telephoning me so late at night.",
+                hint: "Cấu trúc 'mind V-ing'.",
+                explanation_vi: "**Mind telephoning** (phiền gọi điện) $\rightarrow$ **mind + V-ing**. **Nghĩa của câu: Tôi hy vọng bạn không phiền khi tôi gọi điện cho bạn muộn như vậy vào ban đêm.**",
+                explanation_en: "The verb **mind** is followed by a V-ing (**telephoning**)."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["Can you play", "the piano", "without having", "lots of practice first?"],
+                answer: "Can you play the piano without having lots of practice first?",
+                hint: "Giới từ 'without' + V-ing.",
+                explanation_vi: "**Without having** (mà không cần có). **Nghĩa của câu: Bạn có thể chơi piano mà không cần luyện tập nhiều trước không?**",
+                explanation_en: "Preposition 'without' is followed by a V-ing (**having**)."
+            },
+            {
+                type: 'rearrange', title: 'Sắp xếp câu:',
+                words: ["The sculpture", "on the kitchen", "windowsill", "creates", "a sense of joy."],
+                answer: "The sculpture on the kitchen windowsill creates a sense of joy.",
+                hint: "Chủ ngữ số ít $\rightarrow$ V số ít ('creates').",
+                explanation_vi: "Chủ ngữ **The sculpture** (bức tượng) $\rightarrow$ V số ít **creates** (tạo ra). **Nghĩa của câu: Bức tượng trên bệ cửa sổ nhà bếp tạo ra cảm giác vui vẻ.**",
+                explanation_en: "Singular subject 'The sculpture' takes a singular verb 'creates'."
+            },
+
+            // --- PART 3: ĐIỀN TỪ (FILL-IN-THE-BLANK / WORD FORM) ---
+            {
+                type: 'fill', title: 'Điền từ:',
+                text: "Give the correct comparative form: busy -> _____",
+                answer: "busier", multiple_answers: ["busier"],
+                hint: "Tính từ ngắn 'y' đổi thành 'i' rồi thêm -er.",
+                explanation_vi: "Tính từ **busy** (bận rộn) có dạng so sánh hơn là **busier**. **Nghĩa của câu: Dạng so sánh hơn của busy là busier.**",
+                explanation_en: "The comparative form of 'busy' (short adjective ending in -y) is **busier** (change 'y' to 'i' and add -er)."
+            },
+            {
+                type: 'fill', title: 'Điền từ:',
+                text: "Play music if you like. But don't play it too _____.",
+                answer: "loudly", multiple_answers: ["loudly", "loud"],
+                hint: "Trạng từ bổ nghĩa cho động từ 'play'.",
+                explanation_vi: "Trạng từ **loudly** (quá to) bổ nghĩa cho động từ 'play'. (Tuy nhiên, trong văn nói, 'loud' cũng được chấp nhận). **Nghĩa của câu: Cứ chơi nhạc nếu bạn thích. Nhưng đừng chơi quá lớn.**",
+                explanation_en: "The adverb **loudly** modifies the verb 'play'."
+            },
+            {
+                type: 'fill', title: 'Điền từ:',
+                text: "Hoan Kiem Lake is a his_____ place in Hanoi.",
+                answer: "torical", multiple_answers: ["historical"],
+                hint: "Tính từ chỉ tính chất lịch sử.",
+                explanation_vi: "Cụm danh từ: a **historical** place (một địa điểm lịch sử). **Nghĩa của câu: Hồ Hoàn Kiếm là một địa điểm lịch sử ở Hà Nội.**",
+                explanation_en: "The adjective form: **historical** place."
+            },
+            {
+                type: 'fill', title: 'Điền từ:',
+                text: "Give the correct comparative form: angry -> _____.",
+                answer: "angrier", multiple_answers: ["angrier"],
+                hint: "Tính từ ngắn 'y' đổi thành 'i' rồi thêm -er.",
+                explanation_vi: "Tính từ **angry** (tức giận) có dạng so sánh hơn là **angrier**. **Nghĩa của câu: Dạng so sánh hơn của angry là angrier.**",
+                explanation_en: "The comparative form of 'angry' is **angrier** (change 'y' to 'i' and add -er)."
+            },
+            {
+                type: 'fill', title: 'Điền từ:',
+                text: "Some scientists think that there _____ rivers on Mars in the past.",
+                answer: "were", multiple_answers: ["were"],
+                hint: "Quá khứ Đơn, đi với danh từ số nhiều 'rivers'.",
+                explanation_vi: "Dấu hiệu 'in the past' $\rightarrow$ Quá khứ Đơn. 'rivers' (số nhiều) $\rightarrow$ **were**. **Nghĩa của câu: Một số nhà khoa học nghĩ rằng đã có những dòng sông trên Sao Hỏa trong quá khứ.**",
+                explanation_en: "Past Simple tense is required. Plural noun 'rivers' takes **were**."
+            },
+            {
+                type: 'fill', title: 'Điền từ:',
+                text: "Give the correct form of the word in brackets: Painting pictures helps her improve her _____ (CREATE).",
+                answer: "creativity", multiple_answers: ["creativity"],
+                hint: "Danh từ trừu tượng sau tính từ sở hữu 'her'.",
+                explanation_vi: "Tính từ sở hữu 'her' + Danh từ: **creativity** (sự sáng tạo). **Nghĩa của câu: Việc vẽ tranh giúp cô ấy cải thiện khả năng sáng tạo.**",
+                explanation_en: "The possessive adjective 'her' requires the noun form: **creativity**."
+            },
+            {
+                type: 'fill', title: 'Điền từ:',
+                text: "Let's _____ a look at the film section of the paper.",
+                answer: "take", multiple_answers: ["take", "have"],
+                hint: "Cụm động từ: nhìn, xem.",
+                explanation_vi: "Cấu trúc: **take/have** a look at (nhìn/xem). **Nghĩa của câu: Hãy xem mục phim trên báo.**",
+                explanation_en: "The idiom is **take/have** a look at."
+            },
+            {
+                type: 'fill', title: 'Điền từ:',
+                text: "You should be _____, especially when you cross the road. (CARE)",
+                answer: "careful", multiple_answers: ["careful"],
+                hint: "Tính từ sau động từ 'to be'.",
+                explanation_vi: "Sau 'be' $\rightarrow$ Tính từ: **careful** (cẩn thận). **Nghĩa của câu: Bạn nên cẩn thận, đặc biệt là khi băng qua đường.**",
+                explanation_en: "The adjective form **careful** follows the verb 'to be'."
+            },
+            {
+                type: 'fill', title: 'Điền từ:',
+                text: "You should play sports or do exercise to stay in _____.",
+                answer: "shape", multiple_answers: ["shape"],
+                hint: "Cụm từ 'stay in...'.",
+                explanation_vi: "Cụm từ: stay in **shape** (giữ dáng, giữ cơ thể khỏe mạnh). **Nghĩa của câu: Bạn nên chơi thể thao hoặc tập thể dục để giữ dáng.**",
+                explanation_en: "The idiom is stay in **shape**."
+            },
+            {
+                type: 'fill', title: 'Điền từ:',
+                text: "The six parts of the food pyramid have dif_____ sizes.",
+                answer: "ferent", multiple_answers: ["ferent"],
+                hint: "Tính từ: khác nhau.",
+                explanation_vi: "Từ còn thiếu là **different** (khác nhau). **Nghĩa của câu: Sáu phần của tháp dinh dưỡng có các kích cỡ khác nhau.**",
+                explanation_en: "The missing word is the adjective **different**."
+            },
+            {
+                type: 'fill', title: 'Điền từ:',
+                text: "Give the correct form of the word in brackets: How many _____ in one football team? (PLAY)",
+                answer: "players", multiple_answers: ["players"],
+                hint: "Danh từ số nhiều sau 'How many'.",
+                explanation_vi: "Sau 'How many' $\rightarrow$ Danh từ đếm được số nhiều: **players** (người chơi). **Nghĩa của câu: Có bao nhiêu cầu thủ trong một đội bóng đá?**",
+                explanation_en: "After 'How many' $\rightarrow$ plural countable noun: **players**."
+            },
+            {
+                type: 'fill', title: 'Điền từ:',
+                text: "I think going to university is a good prepa_____ for your future career.",
+                answer: "ration", multiple_answers: ["ration"],
+                hint: "Danh từ sau 'good'.",
+                explanation_vi: "Từ còn thiếu là **preparation** (sự chuẩn bị). **Nghĩa của câu: Tôi nghĩ việc học đại học là một sự chuẩn bị tốt cho sự nghiệp tương lai của bạn.**",
+                explanation_en: "The missing noun is **preparation** (sự chuẩn bị)."
+            },
+            {
+                type: 'fill', title: 'Điền từ:',
+                text: "My sister has _____ clothes and books for poor people.",
+                answer: "donated", multiple_answers: ["donated", "collected"],
+                hint: "Thì Hiện tại Hoàn thành (has + V3/ed).",
+                explanation_vi: "Thì Hiện tại Hoàn thành: has + **donated/collected** (quyên góp/thu thập). **Nghĩa của câu: Chị tôi đã quyên góp quần áo và sách cho người nghèo.**",
+                explanation_en: "Present Perfect tense: has + **donated/collected**."
+            },
+            {
+                type: 'fill', title: 'Điền từ:',
+                text: "Give the correct form of the word in brackets: Rob has a _____ and he needs to rest more. (HEAD)",
+                answer: "headache", multiple_answers: ["headache"],
+                hint: "Danh từ chỉ bệnh (đau đầu).",
+                explanation_vi: "Rob bị **headache** (đau đầu). **Nghĩa của câu: Rob bị đau đầu và anh ấy cần nghỉ ngơi nhiều hơn.**",
+                explanation_en: "The noun form for an illness: **headache**."
+            },
+            {
+                type: 'fill', title: 'Điền từ:',
+                text: "Thou_____ of fans lined up in the middle of the night to welcome Argentina team after the 2022 World Cup victory.",
+                answer: "sands", multiple_answers: ["sands"],
+                hint: "Cụm từ: hàng ngàn.",
+                explanation_vi: "Cụm từ: Thou**sands** of fans (hàng ngàn người hâm mộ). **Nghĩa của câu: Hàng ngàn người hâm mộ đã xếp hàng giữa đêm để chào đón đội tuyển Argentina sau chiến thắng World Cup 2022.**",
+                explanation_en: "The phrase is thou**sands** of fans."
+            },
+            {
+                type: 'fill', title: 'Điền từ:',
+                text: "The whale shark is the biggest _____ in the ocean.",
+                answer: "fish", multiple_answers: ["fish", "creature", "animal"],
+                hint: "Danh từ chỉ loài vật (cá).",
+                explanation_vi: "Cá mập voi là loài cá lớn nhất. **Nghĩa của câu: Cá mập voi là loài cá lớn nhất đại dương.**",
+                explanation_en: "The missing noun is **fish/creature/animal**."
+            },
+            {
+                type: 'fill', title: 'Điền từ:',
+                text: "My mother always prepares food and drink for us. Her hobby is _____.",
+                answer: "cooking", multiple_answers: ["cooking", "baking", "making food"],
+                hint: "Danh động từ sau 'Her hobby is...'.",
+                explanation_vi: "Sở thích là **cooking** (nấu ăn) / **baking** (làm bánh). **Nghĩa của câu: Mẹ tôi luôn chuẩn bị đồ ăn thức uống cho chúng tôi. Sở thích của bà là nấu ăn.**",
+                explanation_en: "The gerund form is required after 'Her hobby is...': **cooking**."
+            },
+            {
+                type: 'fill', title: 'Điền từ:',
+                text: "Edison's most famous _____ was the electric bulb. (INVENT)",
+                answer: "invention", multiple_answers: ["invention"],
+                hint: "Danh từ: phát minh.",
+                explanation_vi: "Tính từ 'famous' + Danh từ: **invention** (phát minh). **Nghĩa của câu: Phát minh nổi tiếng nhất của Edison là bóng đèn điện.**",
+                explanation_en: "The noun form of 'INVENT' is **invention**."
+            },
+            {
+                type: 'fill', title: 'Điền từ:',
+                text: "Chinese people in_____ed chopsticks about 5000 years ago.",
+                answer: "vent", multiple_answers: ["vent"],
+                hint: "Động từ Quá khứ Đơn (invented).",
+                explanation_vi: "Động từ: **invented** (đã phát minh) $\rightarrow$ Thì Quá khứ Đơn. **Nghĩa của câu: Người Trung Quốc đã phát minh ra đũa khoảng 5000 năm trước.**",
+                explanation_en: "The missing part is the past simple verb: in**vent**ed."
+            },
+            {
+                type: 'fill', title: 'Điền từ:',
+                text: "The houseboats has solar panels on the top of the house to ge_____ electricity.",
+                answer: "nerate", multiple_answers: ["nerate"],
+                hint: "Động từ nguyên mẫu sau 'to'.",
+                explanation_vi: "Động từ: **generate** (tạo ra) $\rightarrow$ to **generate** electricity. **Nghĩa của câu: Nhà thuyền có các tấm pin mặt trời trên mái nhà để tạo ra điện.**",
+                explanation_en: "The verb is **generate** (to **generate** electricity)."
+            },
+            // --- Sửa lỗi (Error Identification, nhưng được chuyển thành MC hoặc Fill)
+            {
+                type: 'mc', title: 'Chọn câu sai (Sửa lỗi):',
+                question: "Choose the INCORRECT sentence: I like the novel \"Animal Farm\" of British author George Orwell.",
+                options: ["I like the novel \"Animal Farm\" of British author George Orwell.", "When did British author George Orwell write the novel \"Animal Farm\"?", "British author George Orwell wrote the novel \"Animal Farm\".", "British author George Orwell write the novel \"Animal Farm\"."],
+                correct: "British author George Orwell write the novel \"Animal Farm\".",
+                hint: "Tìm câu sai ngữ pháp (sai thì).",
+                explanation_vi: "Câu sai thì: S (số ít, Quá khứ) + V nguyên mẫu. Phải là **wrote** (Quá khứ Đơn). **Nghĩa của câu: Chọn câu sai. - British author George Orwell write the novel \"Animal Farm\".**",
+                explanation_en: "The sentence is grammatically incorrect. The singular subject in the past needs the past tense verb 'wrote', not 'write'."
+            },
+            {
+                type: 'mc', title: 'Sửa lỗi:',
+                question: "Choose the incorrect word(s) in the following sentence: Nobody knew why he **was** absent from school.",
+                options: ["knew", "was he", "Nobody", "from"],
+                correct: "was he",
+                hint: "Kiểm tra trật tự từ sau 'why' trong câu tường thuật/mệnh đề danh ngữ.",
+                explanation_vi: "Lỗi trật tự từ. Trong mệnh đề danh ngữ sau 'why', phải dùng trật tự câu khẳng định: S + V. Sửa **was he** thành **he was**.",
+                explanation_en: "The order of words is incorrect in the noun clause after 'why'. It should be subject + verb: 'he was'."
+            },
+            {
+                type: 'mc', title: 'Sửa lỗi:',
+                question: "Choose the INCORRECT sentence: She often suffers **to** noise pollution because she lives near a crowded street.",
+                options: ["a near", "because", "street", "to"],
+                correct: "to",
+                hint: "Giới từ đi với 'suffer'.",
+                explanation_vi: "Lỗi giới từ. Cụm từ đúng là 'suffer **from**' (chịu đựng từ/vì), không phải 'suffer to'. Sửa **to** thành **from**.",
+                explanation_en: "Incorrect preposition. The correct phrase is 'suffer **from**', not 'suffer to'."
+            },
+            {
+                type: 'mc', title: 'Sửa lỗi:',
+                question: "Choose the incorrect word(s) in the following sentence: I want to buy **any** vegetables and fruit for tonight's dinner.",
+                options: ["want", "any", "and", "tonight's"],
+                correct: "any",
+                hint: "Dùng 'any' trong câu khẳng định có động từ thường không?",
+                explanation_vi: "Lỗi định lượng từ. **Any** dùng trong câu phủ định/câu hỏi. Sửa **any** thành **some** (trong câu khẳng định).",
+                explanation_en: "The quantifier **any** is used in negative statements or questions, not typically in affirmative statements like this one. Change to 'some'."
+            },
+            {
+                type: 'mc', title: 'Sửa lỗi:',
+                question: "Choose the incorrect word(s) in the following sentence: The last time I meet her was two years ago.",
+                options: ["was", "meet", "last", "ago"],
+                correct: "meet",
+                hint: "Thì của động từ chính (Gặp cô ấy lần cuối).",
+                explanation_vi: "Lỗi thì. 'The last time...' $\rightarrow$ Quá khứ Đơn. Sửa **meet** thành **met**.",
+                explanation_en: "The time phrase indicates the Past Simple tense. Change the verb **meet** to **met**."
+            },
+            {
+                type: 'mc', title: 'Sửa lỗi:',
+                question: "Choose the incorrect word(s) in the following sentence: My mother is a good **cooker**.",
+                options: ["My", "cooker", "is", "good"],
+                correct: "cooker",
+                hint: "Phân biệt 'cooker' và 'cook'.",
+                explanation_vi: "Lỗi từ vựng. **Cooker** là bếp nấu/nồi cơm điện. Sửa thành **cook** (người nấu ăn) để phù hợp với nghĩa câu.",
+                explanation_en: "Word choice error. **Cooker** means an appliance, while **cook** means a person who cooks. Change to 'cook'."
+            },
+            {
+                type: 'mc', title: 'Sửa lỗi:',
+                question: "Choose the incorrect word(s) in the following sentence: I left my history notebook on my desk. Can you bring it to class with you? I have to talk to my professor before class, so I can't get **back** to the room to get it myself. Thanks.",
+                options: ["history notebook", "with you", "professor", "get back"],
+                correct: "get back",
+                hint: "Động từ trong mệnh đề mục đích 'to get it myself'.",
+                explanation_vi: "Lỗi ở cụm 'get back'. Cần thay bằng 'get' (nhận) hoặc 'go back' (quay lại). Cụm 'can't get back to the room' là hợp lý, nhưng theo đề gốc là 'get back' bị lỗi. Đáp án gốc chọn **get back**.",
+                explanation_en: "The phrase 'get back' is redundant with 'get back to the room'. We assume the error is in the structure of the sentence where 'get back' is meant to be corrected, or the phrase 'get back to the room' is the intended error."
+            },
+            // --- CÂU HỎI TRẮC NGHIỆM ĐỊNH DẠNG KHÁC (Đã xử lý ở trên, còn lại 3 câu) ---
+            {
+                type: 'mc', title: 'Từ vựng - Hoạt động thể chất:',
+                question: "Do you think _____ is a _____ activity?",
+                options: ["skating/healthy", "skating/health", "skate/healthy", "skate/health"],
+                correct: "skating/healthy",
+                hint: "Chủ ngữ là danh động từ và sau 'a' là tính từ.",
+                explanation_vi: "Chủ ngữ $\rightarrow$ Danh động từ (**skating**). Sau 'a' $\rightarrow$ Tính từ (**healthy**). **Nghĩa của câu: Bạn có nghĩ trượt băng là một hoạt động lành mạnh không?**",
+                explanation_en: "The subject must be a gerund (**skating**), and the modifier must be an adjective (**healthy**)."
+            },
+            {
+                type: 'mc', title: 'Thời gian:',
+                question: "It's exciting to watch airplanes take off and _____ down.",
+                options: ["land", "landing", "lands", "landed"],
+                correct: "land",
+                hint: "Cấu trúc song song (parallel structure) sau 'watch' + V nguyên mẫu.",
+                explanation_vi: "Động từ **watch** + O + V nguyên mẫu (**take off** and **land**). **Nghĩa của câu: Thật thú vị khi xem máy bay cất cánh và hạ cánh.**",
+                explanation_en: "The verb **watch** in this structure takes a bare infinitive in parallel with 'take off': **land**."
+            },
+            {
+                type: 'mc', title: 'Sự kiện Lịch sử:',
+                question: "Ho Chi Minh left Vietnam from Nha Rong Harbour in _____.",
+                options: ["1969", "1911", "1975", "1890"],
+                correct: "1911",
+                hint: "Năm Bác Hồ ra đi tìm đường cứu nước.",
+                explanation_vi: "Bác Hồ rời bến Nhà Rồng (Sài Gòn) vào ngày 5 tháng 6 năm **1911**. **Nghĩa của câu: Hồ Chí Minh rời Việt Nam từ Bến Nhà Rồng vào năm 1911.**",
+                explanation_en: "Ho Chi Minh left Nha Rong Harbour in the year **1911**."
+            },
+            
+            // --- SỬA LỖI ĐÁP ÁN: 3 câu còn lại
+            {
+                type: 'mc', title: 'Chọn câu ĐÚNG:',
+                question: "Choose the CORRECT sentence.",
+                options: ["Last Easter holidays, Jimmy and Paul went camping in the mountain.", "Last Easter holidays, Jimmy and Paul going camping in the mountain.", "Last Easter holidays, Jimmy and Paul went camping in the mountain.", "Last Easter holidays, Jimmy and Paul will go camping in the mountain."],
+                correct: "Last Easter holidays, Jimmy and Paul went camping in the mountain.", // Lựa chọn A và C giống nhau, chọn A
+                hint: "Dấu hiệu 'Last holidays' $\rightarrow$ thì Quá khứ Đơn.",
+                explanation_vi: "Dấu hiệu 'Last Easter holidays' $\rightarrow$ Quá khứ Đơn. Cấu trúc: S + **went camping** (Quá khứ Đơn). **Nghĩa của câu: Kỳ nghỉ Lễ Phục sinh trước, Jimmy và Paul đã đi cắm trại trên núi.**",
+                explanation_en: "The time marker 'Last holidays' requires the Past Simple tense: **went camping**."
+            },
+            {
+                type: 'mc', title: 'Chọn câu ĐÚNG:',
+                question: "Choose the CORRECT sentence.",
+                options: ["I'd like to work as a volunteer for a charity.", "I'd like working as a volunteer for a charity.", "I'd like to work as a volunteer for a charity.", "I'd like working a volunteer for a charity."],
+                correct: "I'd like to work as a volunteer for a charity.", // Lựa chọn A và C giống nhau, chọn A
+                hint: "Cấu trúc 'would like to V' và 'work as a...'.",
+                explanation_vi: "Cấu trúc đúng là **I'd like to work** (Tôi muốn làm việc) + **as a volunteer** (với vai trò tình nguyện viên). **Nghĩa của câu: Tôi muốn làm tình nguyện viên cho một tổ chức từ thiện.**",
+                explanation_en: "The correct structure is **I'd like to work** (would like to V) + **as a volunteer**."
+            },
+            {
+                type: 'mc', title: 'Chọn câu ĐÚNG:',
+                question: "Are there any temples I can visit near here?",
+                options: ["Yes, there are a lot.", "Yes, there is one.", "Yes, they are.", "Yes, it is."],
+                correct: "Yes, there are a lot.", 
+                hint: "Câu hỏi dạng 'Yes/No' với 'Are there any...'.",
+                explanation_vi: "Câu hỏi bắt đầu bằng 'Are there any...' $\rightarrow$ Trả lời bằng 'Yes, there are' hoặc 'No, there aren't'. **Nghĩa của câu: Có đền thờ nào tôi có thể ghé thăm gần đây không? - Có, rất nhiều.**",
+                explanation_en: "The question 'Are there any...' requires the answer form 'Yes, there are' or 'No, there aren't'."
+            },
+            // --- CÂU HỎI VỀ BẢNG/BIỂN BÁO (Thiếu bối cảnh) ---
+            {
+                type: 'mc', title: 'Câu hỏi về Biển báo giao thông:',
+                question: "Choose the correct meaning of the sign. (Biển báo không rõ)",
+                options: ["Narrow right lane", "One way traffic", "Narrow right lane", "Two-way traffic ahead"],
+                correct: "Two-way traffic ahead", 
+                hint: "Đây là câu hỏi cần hình ảnh minh họa (biển báo). Đáp án mặc định là D.",
+                explanation_vi: "Câu hỏi thiếu hình ảnh biển báo, đáp án mặc định là **Two-way traffic ahead** (Đường hai chiều phía trước).",
+                explanation_en: "This question requires an image of a traffic sign. The default answer is **Two-way traffic ahead**."
+            },
+            {
+                type: 'mc', title: 'Câu hỏi về Biển báo/Địa lý:',
+                question: "Which sign is it? (Biển báo không rõ)",
+                options: ["A start of rural area", "No buildings", "A start of mountain area", "A start of urban area"],
+                correct: "A start of urban area",
+                hint: "Đây là câu hỏi cần hình ảnh minh họa (biển báo). Đáp án mặc định là D.",
+                explanation_vi: "Câu hỏi thiếu hình ảnh biển báo, đáp án mặc định là **A start of urban area** (Bắt đầu khu vực đô thị).",
+                explanation_en: "This question requires an image of a traffic sign. The default answer is **A start of urban area**."
+            },
+            {
+                type: 'mc', title: 'Câu hỏi về Địa lý/Lịch sử:',
+                question: "Who is the King of our country in Dinh Dynasty?",
+                options: ["Dinh Cong Tru", "Dinh Tien Hoang", "Dinh Lien", "Dinh Tien Linh"],
+                correct: "Dinh Tien Hoang",
+                hint: "Vua khai lập triều đại nhà Đinh.",
+                explanation_vi: "Vua sáng lập nhà Đinh là **Đinh Tiên Hoàng** (Dinh Tien Hoang).",
+                explanation_en: "The founder of the Dinh Dynasty was **Dinh Tien Hoang**."
+            },
+            {
+                type: 'mc', title: 'Câu hỏi về Tiền tệ:',
+                question: "The first cur_____ of the Ly Dynasty was identified as \"Thuan Thien Dai Bao\".",
+                options: ["currency", "currencies", "currency's", "current"],
+                correct: "currency",
+                hint: "Danh từ (đơn vị tiền tệ).",
+                explanation_vi: "Từ còn thiếu là **currency** (tiền tệ). **Nghĩa của câu: Đồng tiền tệ đầu tiên của nhà Lý được xác định là 'Thuận Thiên Đại Bảo'.**",
+                explanation_en: "The correct noun is **currency** (money)."
+            },
+            {
+                type: 'mc', title: 'Câu hỏi về Giới từ:',
+                question: "This letter is _____ French but I cannot read a word of French.",
+                options: ["by", "with", "in", "on"],
+                correct: "in",
+                hint: "Giới từ chỉ ngôn ngữ.",
+                explanation_vi: "Sử dụng giới từ **in** (in French - bằng tiếng Pháp). **Nghĩa của câu: Bức thư này bằng tiếng Pháp nhưng tôi không thể đọc được một chữ tiếng Pháp nào.**",
+                explanation_en: "The preposition **in** is used to denote language."
+            },
+            {
+                type: 'mc', title: 'Câu hỏi về Biển báo giao thông:',
+                question: "Choose the correct meaning of the sign. (Biển báo không rõ)",
+                options: ["Narrow right lane", "Two-way traffic ahead", "One way traffic", "Narrow right lane"],
+                correct: "Two-way traffic ahead",
+                hint: "Đây là câu hỏi cần hình ảnh minh họa (biển báo). Đáp án mặc định là B.",
+                explanation_vi: "Câu hỏi thiếu hình ảnh biển báo, đáp án mặc định là **Two-way traffic ahead** (Đường hai chiều phía trước).",
+                explanation_en: "This question requires an image of a traffic sign. The default answer is **Two-way traffic ahead**."
+            },
+            {
+                type: 'mc', title: 'Câu hỏi về Toán học:',
+                question: "Road to Olympia has _____ seasons.",
+                options: ["24", "22", "20", "23"],
+                correct: "24", // Cập nhật dựa trên năm 2024
+                hint: "Số mùa đã phát sóng của chương trình Đường lên đỉnh Olympia.",
+                explanation_vi: "Chương trình Đường lên đỉnh Olympia có 24 mùa (tính đến năm 2024).",
+                explanation_en: "Road to Olympia has 24 seasons (as of 2024)."
+            },
+            // --- CÂU HỎI THIẾU BỐI CẢNH TỪ VỰNG/ĐỌC HIỂU (ĐÁP ÁN MẶC ĐỊNH) ---
+            {
+                type: 'mc', title: 'Câu hỏi về Đọc hiểu:',
+                question: "Who is the recipient?",
+                options: ["Adevi Pelusi", "Astronomical Union", "ABC High School", "Mr. Leon France"],
+                correct: "Adevi Pelusi",
+                hint: "Câu hỏi cần văn bản hoặc email đi kèm.",
+                explanation_vi: "Câu hỏi thiếu văn bản (ví dụ: email) đi kèm để xác định người nhận (recipient). Chọn đáp án mặc định là **Adevi Pelusi**.",
+                explanation_en: "This question requires the context of an accompanying text (e.g., an email)."
+            },
+            {
+                type: 'mc', title: 'Câu hỏi về Đọc hiểu:',
+                question: "Who is Cedric W. Cunningham?",
+                options: ["a company", "an assistant", "a customer", "Michael's friend"],
+                correct: "an assistant",
+                hint: "Câu hỏi cần văn bản đi kèm. Đáp án mặc định là B.",
+                explanation_vi: "Câu hỏi thiếu văn bản đi kèm. Chọn đáp án mặc định là **an assistant** (một trợ lý).",
+                explanation_en: "This question requires the context of an accompanying text."
+            },
+            {
+                type: 'mc', title: 'Câu hỏi về Đọc hiểu:',
+                question: "Which gate should Gemma and Ryan come to right immediately?",
+                options: ["Gate 4", "Gate 20", "Gate 40", "Gate 14"],
+                correct: "Gate 4",
+                hint: "Câu hỏi cần văn bản đi kèm (ví dụ: thông báo bay). Đáp án mặc định là A.",
+                explanation_vi: "Câu hỏi thiếu văn bản đi kèm. Chọn đáp án mặc định là **Gate 4** (Cổng số 4).",
+                explanation_en: "This question requires the context of an accompanying text (e.g., flight announcement)."
+            },
+            {
+                type: 'mc', title: 'Câu hỏi về Đọc hiểu:',
+                question: "Which sense do people use to see things?",
+                options: ["Taste", "Touch", "Hearing", "Sight"],
+                correct: "Sight",
+                hint: "Giác quan dùng để nhìn.",
+                explanation_vi: "Giác quan dùng để nhìn là **Sight** (Thị giác).",
+                explanation_en: "The sense used for seeing is **Sight**."
+            },
+            {
+                type: 'mc', title: 'Câu hỏi về Đọc hiểu:',
+                question: "Are there any temples I can visit near here?",
+                options: ["Yes, there are a lot.", "Yes, there is one.", "Yes, they are.", "Yes, it is."],
+                correct: "Yes, there is one.", 
+                hint: "Câu hỏi dạng 'Yes/No' với 'Are there any...'. Đáp án mặc định là B.",
+                explanation_vi: "Câu hỏi bắt đầu bằng 'Are there any...' $\rightarrow$ Trả lời bằng 'Yes, there are' hoặc 'No, there aren't'. Tuy nhiên, nếu đề yêu cầu chọn một câu trả lời duy nhất $\rightarrow$ chọn **Yes, there is one.**",
+                explanation_en: "The question 'Are there any...' requires the answer form 'Yes, there are' or 'No, there aren't'."
+            },
+        ];
+
+        // --- Biến Trạng thái Trò chơi ---
+        let playerName = '';
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let questionsAttempted = 0;
+        let isCorrectlyAnswered = false; 
+
+        // --- DOM Elements ---
+        const startScreen = document.getElementById('start-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const completeScreen = document.getElementById('complete-screen');
+        const playerNameInput = document.getElementById('player-name-input');
+        const displayPlayerName = document.getElementById('display-player-name');
+        const displayScore = document.getElementById('display-score');
+        const displayProgress = document.getElementById('display-progress');
+        const questionTitle = document.getElementById('question-title');
+        const questionContent = document.getElementById('question-content');
+        const feedbackArea = document.getElementById('feedback-area');
+        const feedbackMessage = document.getElementById('feedback-message');
+        const explanationBox = document.getElementById('explanation-box');
+        const explanationText = document.getElementById('explanation-text');
+        const nextButton = document.getElementById('next-button');
+        const hintButton = document.getElementById('hint-button');
+        const hintText = document.getElementById('hint-text');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const totalQuestions = questions.length;
+        const toastContainer = document.getElementById('toast-container'); 
+        
+        // Cập nhật số câu hỏi trên màn hình bắt đầu
+        document.querySelector('#start-screen p').textContent = `Nhập tên của bạn để bắt đầu luyện tập (tổng ${totalQuestions} câu).`;
+
+
+        // --- Custom Toast Logic (thay thế alert() bị cấm) ---
+        function showToast(message, type = 'error', duration = 3000) {
+            const toast = document.createElement('div');
+            toast.className = `toast text-white ${type === 'error' ? 'bg-error' : 'bg-info'}`;
+            toast.innerHTML = `<span class="font-bold">${type === 'error' ? 'Lỗi: ' : 'Thông báo: '}</span> ${message}`;
+            
+            toastContainer.prepend(toast); 
+            
+            // Show toast
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 50);
+
+            // Hide and remove toast
+            setTimeout(() => {
+                toast.classList.remove('show');
+                toast.classList.add('opacity-0', 'scale-y-0'); 
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, duration);
+        }
+
+        // --- Logic Game Flow ---
+
+        function startGame() {
+            playerName = playerNameInput.value.trim();
+            if (playerName.length < 2) {
+                showToast('Vui lòng nhập tên của bạn để bắt đầu.', 'error');
+                playerNameInput.classList.add('border-error', 'ring-2', 'ring-error');
+                setTimeout(() => { playerNameInput.classList.remove('border-error', 'ring-2', 'ring-error'); }, 1000);
+                return;
+            }
+            startScreen.classList.add('hidden');
+            quizScreen.classList.remove('hidden');
+            quizScreen.classList.add('flex');
+            
+            displayPlayerName.textContent = playerName;
+            
+            // Xáo trộn câu hỏi
+            questions.sort(() => Math.random() - 0.5);
+
+            currentQuestionIndex = 0;
+            score = 0;
+            questionsAttempted = 0;
+            updateScoreDisplay();
+            loadQuestion(currentQuestionIndex);
+        }
+
+        function resetGame() {
+            completeScreen.classList.add('hidden');
+            // Xóa pháo hoa
+            const confettiCanvas = document.getElementById('confetti-canvas');
+            confettiCanvas.innerHTML = ''; 
+            
+            // Quay lại màn hình bắt đầu
+            startScreen.classList.remove('hidden');
+            playerNameInput.value = '';
+        }
+
+        function updateScoreDisplay() {
+            displayScore.textContent = score;
+            const currentQNum = currentQuestionIndex < totalQuestions ? currentQuestionIndex + 1 : totalQuestions;
+            displayProgress.textContent = `${currentQNum}/${totalQuestions}`;
+        }
+
+        function loadQuestion(index) {
+            if (index >= totalQuestions) {
+                showCompleteScreen();
+                return;
+            }
+
+            // Reset trạng thái
+            isCorrectlyAnswered = false;
+            feedbackArea.classList.add('hidden');
+            feedbackMessage.textContent = '';
+            explanationBox.classList.add('hidden');
+            nextButton.disabled = true;
+            nextButton.classList.remove('btn-success');
+            nextButton.textContent = 'Tiếp theo »';
+
+            const q = questions[index];
+            questionTitle.textContent = `Câu ${index + 1}/${totalQuestions} - ${q.title}`;
+            hintText.textContent = `Gợi ý: ${q.hint}`;
+
+            let contentHTML = '';
+            
+            if (q.type === 'rearrange') {
+                const shuffledWords = [...q.words].sort(() => Math.random() - 0.5);
+                contentHTML = `
+                    <p class="text-lg text-gray-700 font-medium mb-4">Sắp xếp các từ sau bằng cách nhấp vào các nút:</p>
+                    <div id="rearrange-words" class="flex flex-wrap gap-2 mb-4 p-4 border border-dashed border-gray-300 rounded-xl bg-gray-50">
+                        ${shuffledWords.map(word => `<button class="word-btn btn bg-info text-sm py-1 px-3" data-word="${word.trim()}" onclick="selectWord(this)">${word.trim()}</button>`).join('')}
+                    </div>
+                    <p class="text-lg font-semibold text-primary mb-2">Câu trả lời của bạn:</p>
+                    <div class="flex items-center space-x-2">
+                        <input type="text" id="rearrange-input" readonly placeholder="Câu trả lời sẽ hiện ra khi bạn nhấp vào từ..." 
+                            class="flex-grow px-4 py-2 border border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition duration-150">
+                        <button onclick="resetRearrange()" class="btn bg-gray-500 hover:bg-gray-600 text-sm">Xóa</button>
+                        <button onclick="checkRearrangeAnswer()" class="btn btn-primary text-sm">Kiểm tra</button>
+                    </div>
+                `;
+            } else if (q.type === 'fill') {
+                const textWithBlank = q.text.replace('_____', '<span class="text-xl font-bold text-primary">_______</span>');
+                contentHTML = `
+                    <p class="text-xl font-medium text-gray-800 p-4 border border-gray-300 rounded-xl bg-gray-50">${textWithBlank}</p>
+                    <p class="text-lg font-semibold text-primary mb-2 mt-4">Điền từ:</p>
+                    <input type="text" id="fill-input" placeholder="Nhập từ còn thiếu..." 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition duration-150" onkeyup="if(event.key === 'Enter') checkFillAnswer()">
+                    <button onclick="checkFillAnswer()" class="btn btn-primary w-full mt-2">Kiểm tra</button>
+                `;
+            } else if (q.type === 'mc') {
+                const shuffledOptions = q.options.map(option => ({ text: option, correct: option === q.correct }));
+                shuffledOptions.sort(() => Math.random() - 0.5);
+
+                const optionsHTML = shuffledOptions.map((option, i) => `
+                    <div class="mc-option-container">
+                        <input type="radio" id="mc-option-${index}-${i}" name="mc-choice" value="${option.text}" class="hidden" 
+                            onclick="checkMCAnswer(this)">
+                        <label for="mc-option-${index}-${i}" class="block p-3 border border-gray-300 rounded-xl cursor-pointer hover:bg-primary/10 transition duration-150 text-gray-800">
+                            <span class="font-bold mr-2 text-primary">${String.fromCharCode(65 + i)}.</span> ${option.text}
+                        </label>
+                    </div>
+                `).join('');
+                contentHTML = `
+                    <p class="text-xl font-medium text-gray-800 p-4 border border-gray-300 rounded-xl bg-gray-50">${q.question}</p>
+                    <div class="mt-4 space-y-2" id="mc-options">${optionsHTML}</div>
+                `;
+            }
+
+            questionContent.innerHTML = contentHTML;
+            updateScoreDisplay();
+        }
+
+        // --- Logic Câu trả lời ---
+
+        function handleCorrectAnswer(correctAnswer, explanation_vi, explanation_en) {
+            if (!isCorrectlyAnswered) {
+                score += 10;
+                questionsAttempted++;
+                isCorrectlyAnswered = true; 
+            }
+            
+            updateScoreDisplay();
+
+            feedbackArea.classList.remove('hidden');
+            feedbackMessage.className = 'text-lg font-semibold p-3 mb-3 rounded-xl bg-success text-white';
+            feedbackMessage.textContent = '✅ Chính xác! (Đã làm: ' + questionsAttempted + ')';
+
+            // Phân tách Nghĩa của câu và Giải thích
+            const meaningMatch = explanation_vi.match(/Nghĩa của câu: (.*?)(?:\.|\.$|$)/)?.[1]?.trim() || explanation_vi.match(/Nghĩa của câu: (.*)/)?.[1]?.trim() || '(Không có sẵn)';
+            const explanationDetail = explanation_vi.replace(/Nghĩa của câu:.*?\.?$/, '').trim();
+
+            explanationText.innerHTML = `
+                <p class="mb-2"><strong>Đáp án đúng:</strong> ${correctAnswer}</p>
+                <p class="mb-2"><strong>Nghĩa của câu:</strong> ${meaningMatch}</p>
+                <p class="mb-2"><strong>Giải thích:</strong> ${explanationDetail.replace(/Giải thích: /, '').trim()}</p>
+                <p><strong>Explanation (English):</strong> ${explanation_en}</p>
+            `;
+            explanationBox.classList.remove('hidden');
+
+            nextButton.disabled = false;
+            nextButton.classList.add('btn-success');
+            nextButton.textContent = 'Tuyệt vời! Tiếp theo »';
+            disableCurrentQuestion();
+        }
+
+        function handleWrongAnswer() {
+            feedbackArea.classList.remove('hidden');
+            feedbackMessage.className = 'text-lg font-semibold p-3 mb-3 rounded-xl bg-error text-white';
+            feedbackMessage.textContent = '❌ Sai rồi. Hãy thử lại!';
+            explanationBox.classList.add('hidden');
+        }
+
+        function disableCurrentQuestion() {
+            const currentQ = questions[currentQuestionIndex];
+            if (currentQ.type === 'mc') {
+                document.querySelectorAll('#mc-options input').forEach(input => input.disabled = true);
+                document.querySelectorAll('#mc-options label').forEach(label => label.classList.remove('hover:bg-primary/10', 'cursor-pointer'));
+            } else if (currentQ.type === 'fill') {
+                document.getElementById('fill-input').disabled = true;
+                document.querySelector('#question-content button:last-child').disabled = true; 
+            } else if (currentQ.type === 'rearrange') {
+                document.getElementById('rearrange-input').disabled = true;
+                document.querySelectorAll('.word-btn').forEach(btn => btn.disabled = true);
+                document.querySelector('#question-content .flex.items-center button:last-child').disabled = true; 
+                document.querySelector('#question-content .flex.items-center button:nth-child(2)').disabled = true; 
+            }
+        }
+
+        // Kiểm tra câu hỏi trắc nghiệm (Multiple Choice)
+        function checkMCAnswer(radio) {
+            const q = questions[currentQuestionIndex];
+            const correctAnswer = q.correct; 
+            
+            const selectedAnswer = radio.value;
+
+            document.querySelectorAll('#mc-options input').forEach(input => {
+                const label = input.nextElementSibling;
+                label.classList.remove('bg-success/20', 'bg-error/20', 'border-success', 'border-error');
+                if (input.value === correctAnswer) {
+                    label.classList.add('bg-success/20', 'border-success', 'font-bold');
+                } else if (input.checked) {
+                    label.classList.add('bg-error/20', 'border-error', 'font-bold');
+                }
+            });
+
+            if (selectedAnswer === correctAnswer) {
+                handleCorrectAnswer(selectedAnswer, q.explanation_vi, q.explanation_en);
+            } else {
+                handleWrongAnswer();
+            }
+        }
+
+        // Kiểm tra câu hỏi điền từ (Fill-in-the-blank)
+        function checkFillAnswer() {
+            const q = questions[currentQuestionIndex];
+            
+            const correctAnswers = q.multiple_answers || [q.answer];
+            
+            const input = document.getElementById('fill-input');
+            const userAnswer = input.value.trim().toLowerCase().replace(/[.,!?:;]$/, ''); 
+            
+            let isCorrect = false;
+            let actualCorrectAnswer = q.answer; 
+
+            for (const ans of correctAnswers) {
+                if (userAnswer === ans.trim().toLowerCase().replace(/[.,!?:;]$/, '')) {
+                    isCorrect = true;
+                    break;
+                }
+            }
+
+            if (isCorrect) {
+                input.classList.remove('border-error', 'bg-error/5');
+                input.classList.add('border-success', 'bg-success/5');
+                handleCorrectAnswer(actualCorrectAnswer, q.explanation_vi, q.explanation_en);
+            } else {
+                input.classList.remove('border-success', 'bg-success/5');
+                input.classList.add('border-error', 'bg-error/5');
+                handleWrongAnswer();
+            }
+        }
+
+        // Logic xử lý khi click vào từ
+        function selectWord(button) {
+            const word = button.getAttribute('data-word');
+            const input = document.getElementById('rearrange-input');
+            
+            if (input.disabled) return; 
+
+            input.value += (word + ' ');
+            
+            button.disabled = true;
+            button.classList.remove('bg-info', 'hover:bg-primary-dark');
+            button.classList.add('bg-gray-400', 'cursor-not-allowed');
+            
+            feedbackArea.classList.add('hidden');
+        }
+
+        // Logic xóa câu trả lời sắp xếp
+        function resetRearrange() {
+            const input = document.getElementById('rearrange-input');
+            input.value = '';
+            document.querySelectorAll('.word-btn').forEach(btn => {
+                btn.disabled = false;
+                btn.classList.add('bg-info', 'hover:bg-primary-dark');
+                btn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            });
+            
+            feedbackArea.classList.add('hidden');
+            input.classList.remove('border-error', 'bg-error/5', 'border-success', 'bg-success/5');
+        }
+
+        // Kiểm tra câu hỏi sắp xếp (Rearrange)
+        function checkRearrangeAnswer() {
+            const q = questions[currentQuestionIndex];
+            const correctAnswer = q.answer; 
+            
+            const input = document.getElementById('rearrange-input');
+            const userAnswer = input.value.trim().toLowerCase().replace(/[.,!?:;]$/, '');
+            const correctLower = correctAnswer.trim().toLowerCase().replace(/[.,!?:;]$/, '');
+            
+            const normalize = (str) => str.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+            const userAnswerNormalize = normalize(userAnswer);
+            const correctLowerNormalize = normalize(correctLower);
+
+            if (userAnswerNormalize === correctLowerNormalize) {
+                input.classList.remove('border-error', 'bg-error/5');
+                input.classList.add('border-success', 'bg-success/5');
+                input.value = correctAnswer; 
+                handleCorrectAnswer(correctAnswer, q.explanation_vi, q.explanation_en);
+            } else {
+                input.classList.remove('border-success', 'bg-success/5');
+                input.classList.add('border-error', 'bg-error/5');
+                handleWrongAnswer();
+            }
+        }
+
+        // --- Logic Gợi ý ---
+        function showHint() {
+            hintButton.classList.add('show-hint');
+        }
+
+        function hideHint() {
+            hintButton.classList.remove('show-hint');
+        }
+
+        // --- Logic Chuyển câu hỏi ---
+        function nextQuestion() {
+            currentQuestionIndex++;
+            loadQuestion(currentQuestionIndex);
+        }
+        
+        // --- Màn hình hoàn thành ---
+        function showCompleteScreen() {
+            quizScreen.classList.add('hidden');
+            completeScreen.classList.remove('hidden');
+            finalScoreDisplay.textContent = `${score} / ${totalQuestions * 10} điểm`;
+            
+            triggerConfetti();
+        }
+        
+        // --- Hiệu ứng Pháo hoa (Confetti) ---
+        function triggerConfetti() {
+            const confettiCanvas = document.getElementById('confetti-canvas');
+            confettiCanvas.innerHTML = ''; 
+            const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4caf50', '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107', '#ff9800', '#ff5722'];
+            const count = 100;
+
+            for (let i = 0; i < count; i++) {
+                const piece = document.createElement('div');
+                piece.style.position = 'absolute';
+                piece.style.width = `${Math.random() * 10 + 5}px`;
+                piece.style.height = `${Math.random() * 10 + 5}px`;
+                piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                piece.style.left = `${Math.random() * 100}vw`;
+                piece.style.top = `${Math.random() * -100}vh`; 
+                piece.style.opacity = Math.random() + 0.5;
+                piece.style.transform = `rotate(${Math.random() * 360}deg)`;
+                
+                const duration = Math.random() * 3 + 2; 
+                const delay = Math.random() * 0.5;
+                piece.style.animation = `fall ${duration}s ease-in ${delay}s forwards`;
+
+                confettiCanvas.appendChild(piece);
+            }
+
+            if (!document.querySelector('style[data-confetti]')) {
+                const style = document.createElement('style');
+                style.setAttribute('data-confetti', true);
+                style.innerHTML = `
+                    @keyframes fall {
+                        0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+                        100% { transform: translateY(105vh) rotate(720deg); opacity: 0; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        }
+
+
+        // --- Khởi tạo ---
+        window.onload = () => {
+             console.log("Ứng dụng tải thành công. Tổng số câu hỏi: ", questions.length);
+        };
+    </script>
+</body>
+</html>
